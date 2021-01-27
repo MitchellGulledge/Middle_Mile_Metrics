@@ -2,7 +2,10 @@ import requests
 import json
 import meraki
 from numpy import mean
+import numpy
 import matplotlib.pyplot as plt
+import arrow
+from operator import add 
 
 # Author Mitchell Gulledge
 
@@ -247,8 +250,6 @@ meraki_probe_test_results_dictionary = get_meraki_icmp_stats()
 branch_to_branch_latency_average = (meraki_probe_test_results_dictionary['branch_1_to_branch_2_results']['latency_avg'] \
     + meraki_probe_test_results_dictionary['branch_2_to_branch_1_results']['latency_avg']) // 2
 
-print(branch_to_branch_latency_average)
-
 # site 1 to site 2 through Middle Mile is captured below
 branch_to_branch__mmo_latency_average = ((
     meraki_probe_test_results_dictionary['branch_1_to_hub_1_results']['latency_avg'] + \
@@ -260,7 +261,106 @@ branch_to_branch__mmo_latency_average = ((
                         )) // 2
 
 
-print(branch_to_branch__mmo_latency_average)
+test_results_dictionary_latency = {
+        'branch_1_to_branch_2_results': '',
+        'branch_1_to_hub_1_results': '',
+        'branch_2_to_branch_1_results': '',
+        'branch_2_to_hub_2_results': '',
+        'hub_1_to_branch_1_results': '',
+        'hub_1_to_hub_2_results': '',
+        'hub_2_to_branch_2_results': '',
+        'hub_2_to_hub_1_results': ''
+    }
+
+for metrics in meraki_probe_test_results_dictionary:
+
+    # entering in 1440 min as that accounts for 24 hours (for now inputting 360 for last few hours)
+    temp_list = meraki_probe_test_results_dictionary[metrics]['results'][-1200:]
+
+    # creating lists containg latency and loss
+    latency_results = []
+    loss_results = []
+
+    # iterating through temp list of indexed results above
+    for test_metric in temp_list:
+
+        latency_results.append(test_metric['latencyMs'])
+
+    # using list comprehension 
+    # to remove None values in list 
+    filtered_latency_results = [i for i in latency_results if i] 
+
+    test_results_dictionary_latency[metrics] = filtered_latency_results
+
+
+
+# Using map() and add()
+# Add corresponding elements of two lists
+branch_to_branch_added_list_results = list(map(add, test_results_dictionary_latency\
+    ['branch_1_to_branch_2_results'], test_results_dictionary_latency['branch_1_to_branch_2_results']))
+
+# Use a list comprehension for a more compact implementation and dividing each element by 2 since we 
+# added the latency to and from the branch
+branch_to_branch_final_list_results = [number / 2 for number in branch_to_branch_added_list_results]
+
+print(branch_to_branch_final_list_results)
+
+# creating variable to hold rows for latency results
+branch_to_branch_rows = []
+
+
+count = 0
+
+for x in branch_to_branch_final_list_results:
+    count = count + 1
+    branch_to_branch_rows.append(count)
+
+
+# Using map() and add()
+# Add corresponding elements of two lists
+branch_1_to_branch_2_added_vpn_list_results = list(map(sum, zip(test_results_dictionary_latency\
+    ['branch_1_to_hub_1_results'], test_results_dictionary_latency['hub_1_to_hub_2_results'],\
+        test_results_dictionary_latency['hub_2_to_branch_2_results'])))
+
+branch_2_to_branch_1_added_vpn_list_results = list(map(sum, zip(test_results_dictionary_latency \
+    ['branch_2_to_hub_2_results'], test_results_dictionary_latency['hub_2_to_hub_1_results'], \
+        test_results_dictionary_latency['hub_1_to_branch_1_results'])))
+
+# Using map() and add()
+# Add corresponding elements of two lists
+branch_to_branch_latency_both_directions =  list(map(add, branch_1_to_branch_2_added_vpn_list_results, \
+    branch_2_to_branch_1_added_vpn_list_results))
+
+# Use a list comprehension for a more compact implementation and dividing each element by 6 since we 
+# added the latency to and from the branch
+branch_to_branch_vpn_final_list_results = [number / 2 for number in branch_to_branch_latency_both_directions]
+
+print("look below")
+
+print(branch_to_branch_vpn_final_list_results)
+
+# creating variable to hold rows for latency results
+branch_to_branch_in_vpn_rows = []
+
+
+count = 0
+
+for x in branch_to_branch_vpn_final_list_results:
+    count = count + 1
+    branch_to_branch_in_vpn_rows.append(count)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -276,25 +376,64 @@ y_axis = [float(branch_to_branch__mmo_latency_average), float(branch_to_branch_l
 ####### the code below section calculates average jitter across all tests
 
 # x-coordinates of left sides of bars  
-left = [1, 2] 
+#left = [1, 2] 
   
 # heights of bars 
-height = y_axis
+#height = y_axis
 #height = [1, 2, 3, 4, 5, 6, 7]
   
 # labels for bars 
-tick_label = x_axis_list 
+#tick_label = x_axis_list 
   
 # plotting a bar chart 
-plt.bar(left, height, tick_label = tick_label, 
-        width = 0.8, color = ['red', 'green']) 
+#plt.bar(left, height, tick_label = tick_label, 
+#        width = 0.8, color = ['red', 'green']) 
   
 # naming the x-axis 
-plt.xlabel('Difference in VPN vs not in VPN') 
+#plt.xlabel('Difference in VPN vs not in VPN') 
 # naming the y-axis 
-plt.ylabel('Latency Average') 
+#plt.ylabel('Latency Average') 
 # plot title 
-plt.title('Average Latency Across Umbrella vs Internet') 
+#plt.title('Average Latency Across Umbrella vs Internet') 
   
 # function to show the plot 
-plt.show() 
+#plt.show() 
+
+
+
+
+
+
+def get_latency_plot_graph():
+    
+    # line 1 points 
+    x1 = numpy.array(branch_to_branch_rows)
+    y1 = numpy.array(branch_to_branch_final_list_results)
+    # plotting the line 2 points  
+    plt.plot(x1, y1, label = "Branch to Branch Direct Latency") 
+
+
+
+
+    # line 2 points 
+    x2 = numpy.array(branch_to_branch_in_vpn_rows)
+    y2 = numpy.array(branch_to_branch_vpn_final_list_results)
+    # plotting the line 2 points  
+    plt.plot(x2, y2, label = "In VPN Branch to Branch Latency") 
+
+
+
+    # naming the x axis 
+    plt.xlabel('units in time') 
+    # naming the y axis 
+    plt.ylabel('Latency in MS') 
+    # giving a title to my graph 
+    plt.title('Latency Difference Between No VPN and VPN') 
+    
+    # show a legend on the plot 
+    plt.legend() 
+    
+    # function to show the plot 
+    plt.show() 
+
+get_latency_plot_graph()
