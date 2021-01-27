@@ -4,7 +4,7 @@ import meraki
 from numpy import mean
 import matplotlib.pyplot as plt
 
-
+# Author Mitchell Gulledge
 
 # creating class to create all Meraki config
 class MerakiConfig:
@@ -110,29 +110,36 @@ class MerakiConfig:
             # creating variable for branch IP and setting public IP to that
             site_1_branch_ip = uplinks['uplinks'][0]['publicIp']
 
+            # creating variable for branch serial
+            site_1_branch_serial = uplinks['serial']
+
         elif site_2_branch_id == uplinks['networkId']:
 
             # creating variable for branch IP and setting public IP to that
             site_2_branch_ip = uplinks['uplinks'][0]['publicIp']
+
+            # creating variable for branch serial
+            site_2_branch_serial = uplinks['serial']
 
         elif site_1_hub_id == uplinks['networkId']:
 
             # creating variable for Hub IP and setting public IP to that
             site_1_hub_ip = uplinks['uplinks'][0]['publicIp']
 
+            # creating variable for hub serial
+            site_1_hub_serial = uplinks['serial']
+
         elif site_2_hub_id == uplinks['networkId']:
 
             # creating variable for Hub IP and setting public IP to that
             site_2_hub_ip = uplinks['uplinks'][0]['publicIp']
 
+            # creating variable for hub serial
+            site_2_hub_serial = uplinks['serial']
+
 # creating function to fetch ICMP stats for organization
 def get_meraki_icmp_stats():
 
-    # using meraki sdk to obtain icmp metrics for the meraki network IDs in MerakiConfig
-    meraki_icmp_metrics_response = MerakiConfig.meraki_dashboard.organizations.\
-        getOrganizationDevicesUplinksLossAndLatency(
-            MerakiConfig.meraki_org_id
-        )
 
     # creating dictionary containg all results for all paths that we later append to
     meraki_metric_results_dictionary = {
@@ -146,75 +153,47 @@ def get_meraki_icmp_stats():
         'hub_2_to_hub_1_results': {'results': '', 'latency_avg': '', 'loss_avg': ''}
     }
 
-    # iterating through meraki_icmp_metrics_response to start mapping the different measurement paths
-    for results in meraki_icmp_metrics_response:
+    meraki_metric_results_dictionary['branch_1_to_branch_2_results']['results'] = MerakiConfig.\
+        meraki_dashboard.devices.getDeviceLossAndLatencyHistory(
+            MerakiConfig.site_1_branch_serial, MerakiConfig.site_2_branch_ip
+            )
 
-        # setting conditional statement to match network ID with branch site 1
-        if MerakiConfig.site_1_branch_id == results['networkId']:
+    meraki_metric_results_dictionary['branch_1_to_hub_1_results']['results'] = MerakiConfig.\
+        meraki_dashboard.devices.getDeviceLossAndLatencyHistory(
+            MerakiConfig.site_1_branch_serial, MerakiConfig.site_1_hub_ip
+            )
 
-            # setting conditional statement to match based on branch site 2
-            if results['ip'] == MerakiConfig.site_2_branch_ip:
+    meraki_metric_results_dictionary['branch_2_to_branch_1_results']['results'] = MerakiConfig.\
+        meraki_dashboard.devices.getDeviceLossAndLatencyHistory(
+            MerakiConfig.site_2_branch_serial, MerakiConfig.site_1_branch_ip
+            )
 
-                # updating dictionary key value for meraki_metric_results_dictionary
-                meraki_metric_results_dictionary['branch_1_to_branch_2_results']['results'] = results['timeSeries']
+    meraki_metric_results_dictionary['branch_2_to_hub_2_results']['results'] = MerakiConfig.\
+        meraki_dashboard.devices.getDeviceLossAndLatencyHistory(
+            MerakiConfig.site_2_branch_serial, MerakiConfig.site_2_hub_ip
+            )
 
-            # setting conditional statement to match site 1 hub
-            elif results['ip'] == MerakiConfig.site_1_hub_ip:
+    meraki_metric_results_dictionary['hub_1_to_branch_1_results']['results'] = MerakiConfig.\
+        meraki_dashboard.devices.getDeviceLossAndLatencyHistory(
+            MerakiConfig.site_1_hub_serial, MerakiConfig.site_1_branch_ip
+            )
 
-                # updating dictionary key value for meraki_metric_results_dictionary
-                meraki_metric_results_dictionary['branch_1_to_hub_1_results']['results'] = results['timeSeries']
+    meraki_metric_results_dictionary['hub_1_to_hub_2_results']['results'] = MerakiConfig.\
+        meraki_dashboard.devices.getDeviceLossAndLatencyHistory(
+            MerakiConfig.site_1_hub_serial, MerakiConfig.site_2_hub_ip
+            )
 
+    meraki_metric_results_dictionary['hub_2_to_branch_2_results']['results'] = MerakiConfig.\
+        meraki_dashboard.devices.getDeviceLossAndLatencyHistory(
+            MerakiConfig.site_2_hub_serial, MerakiConfig.site_2_branch_ip
+            )
 
-        # setting conditional statement to match network ID with branch site 2
-        elif MerakiConfig.site_2_branch_id == results['networkId']:
+    meraki_metric_results_dictionary['hub_2_to_hub_1_results']['results'] = MerakiConfig.\
+        meraki_dashboard.devices.getDeviceLossAndLatencyHistory(
+            MerakiConfig.site_2_hub_serial, MerakiConfig.site_1_hub_ip
+            )
 
-            # setting conditional statement to match based on branch site 1
-            if results['ip'] == MerakiConfig.site_1_branch_ip:
-
-                # updating meraki_metric_results_dictionary with timeseries results
-                meraki_metric_results_dictionary['branch_2_to_branch_1_results']['results'] = results['timeSeries']
-
-            # setting conditional statement to match site 2 hub
-            elif results['ip'] == MerakiConfig.site_2_hub_ip:
-
-                # updating meraki_metric_results_dictionary with timeseries results
-                meraki_metric_results_dictionary['branch_2_to_hub_2_results']['results'] = results['timeSeries']
-
-        # setting conditional statement to match network ID with site 1 Hub
-        elif MerakiConfig.site_1_hub_id == results['networkId']:
-
-            # setting conditional statement to match based on branch site 1
-            if results['ip'] == MerakiConfig.site_1_branch_ip:
-
-                # updating meraki_metric_results_dictionary with timeseries results
-                meraki_metric_results_dictionary['hub_1_to_branch_1_results']['results'] = results['timeSeries']
-
-            # setting conditional statement to match site 2 hub
-            elif results['ip'] == MerakiConfig.site_2_hub_ip:
-
-                # updating meraki_metric_results_dictionary with timeseries results
-                meraki_metric_results_dictionary['hub_1_to_hub_2_results']['results'] = results['timeSeries']
-
-
-        # setting conditional statement to match network ID with site 2 Hub
-        elif MerakiConfig.site_2_hub_id == results['networkId']:
-
-            # setting conditional statement to match based on branch site 2
-            if results['ip'] == MerakiConfig.site_2_branch_ip:
-
-                # updating meraki_metric_results_dictionary with timeseries results
-                meraki_metric_results_dictionary['hub_2_to_branch_2_results']['results'] = results['timeSeries']
-
-            # setting conditional statement to match site 1 hub
-            elif results['ip'] == MerakiConfig.site_1_hub_ip:
-
-                # updating meraki_metric_results_dictionary with timeseries results
-                meraki_metric_results_dictionary['hub_2_to_hub_1_results']['results'] = results['timeSeries']
-
-
-
-
-    # iterating through each name of the dictionary
+# iterating through each name of the dictionary
     for result_name in meraki_metric_results_dictionary:
 
         # creating two lists that will hold all of the latency/loss values
@@ -243,7 +222,8 @@ def get_meraki_icmp_stats():
 
 
         meraki_metric_results_dictionary[result_name]['latency_avg'] = mean(result_latency_list)
-        print(mean(result_loss_list))
+        print(result_name)
+        print(mean(result_latency_list))
         #meraki_metric_results_dictionary[result_name]['loss_avg'] = sum(result_loss_list) / len(result_loss_list)
 
 
@@ -287,13 +267,34 @@ print(branch_to_branch__mmo_latency_average)
 
 x_axis_list = ['in_vpn', 'not_in_vpn']
 
-
-print(x_axis_list)
-
 y_axis = [float(branch_to_branch__mmo_latency_average), float(branch_to_branch_latency_average)]
-    
-fig = plt.figure()
-ax = fig.add_axes([0,0,1,1])
-ax.bar(x_axis_list,y_axis)
-plt.show()
 
+
+
+
+
+####### the code below section calculates average jitter across all tests
+
+# x-coordinates of left sides of bars  
+left = [1, 2] 
+  
+# heights of bars 
+height = y_axis
+#height = [1, 2, 3, 4, 5, 6, 7]
+  
+# labels for bars 
+tick_label = x_axis_list 
+  
+# plotting a bar chart 
+plt.bar(left, height, tick_label = tick_label, 
+        width = 0.8, color = ['red', 'green']) 
+  
+# naming the x-axis 
+plt.xlabel('Difference in VPN vs not in VPN') 
+# naming the y-axis 
+plt.ylabel('Latency Average') 
+# plot title 
+plt.title('Average Latency Across Umbrella vs Internet') 
+  
+# function to show the plot 
+plt.show() 
